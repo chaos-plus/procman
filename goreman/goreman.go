@@ -147,7 +147,11 @@ func defaultServer(serverPort uint) string {
 	if s, ok := os.LookupEnv("GOREMAN_RPC_SERVER"); ok {
 		return s
 	}
-	return fmt.Sprintf("127.0.0.1:%d", defaultPort())
+	if serverPort != 0 {
+		return fmt.Sprintf("127.0.0.1:%d", serverPort)
+	} else {
+		return fmt.Sprintf("127.0.0.1:%d", defaultPort())
+	}
 }
 
 func defaultAddr() string {
@@ -239,18 +243,18 @@ func start(ctx context.Context, sig <-chan os.Signal, cfg *Config) error {
 	return procsErr
 }
 
-func ParseConfig(args []string) (*Config, error) {
+func ParseConfig(args []string) *Config {
 	fs := flag.NewFlagSet("goreman", flag.ExitOnError)
 	return ParseConfigWithFlagSet(fs, args)
 }
 
-func ParseConfigWithFlagSet(fs *flag.FlagSet, args []string) (*Config, error) {
+func ParseConfigWithFlagSet(fs *flag.FlagSet, args []string) *Config {
 	cfg := &Config{}
 	fs.StringVar(&cfg.Procfile, "f", "Procfile", "proc file")
-	fs.UintVar(&cfg.RpcPort, "p", defaultPort(), "port")
+	fs.UintVar(&cfg.RpcPort, "p", 8555, "rpc port")
 	fs.BoolVar(&cfg.StartRpcServer, "rpc-server", true, "Start an RPC server listening on "+defaultAddr())
 	fs.StringVar(&cfg.BaseDir, "basedir", "", "base directory")
-	fs.UintVar(&cfg.BasePort, "b", defaultPort(), "base number of port")
+	fs.UintVar(&cfg.BasePort, "b", 5000, "base number of port")
 	fs.BoolVar(&cfg.SetPorts, "set-ports", true, "False to avoid setting PORT env var for each subprocess")
 	fs.BoolVar(&cfg.ExitOnError, "exit-on-error", false, "Exit goreman if a subprocess quits with a nonzero return code")
 	fs.BoolVar(&cfg.ExitOnStop, "exit-on-stop", true, "Exit goreman if all subprocesses stop")
@@ -261,11 +265,16 @@ func ParseConfigWithFlagSet(fs *flag.FlagSet, args []string) (*Config, error) {
 	} else {
 		cfg.Args = args
 	}
-	return cfg, nil
+	return cfg
 }
 
 func Main() {
 	MainWithConfig(nil)
+}
+
+func MainWithArgs(args []string) {
+	cfg := ParseConfig(args)
+	MainWithConfig(cfg)
 }
 
 func MainWithConfig(cfg *Config) {

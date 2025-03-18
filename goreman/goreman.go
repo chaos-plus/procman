@@ -100,7 +100,7 @@ type Config struct {
 func readProcfile(cfg *Config) error {
 	if _, err := os.Stat(cfg.Procfile); err != nil {
 		if os.IsNotExist(err) {
-			return errors.New("procfile does not exist")
+			return errors.New("procfile does not exist:" + cfg.Procfile)
 		}
 		return err
 	}
@@ -256,7 +256,11 @@ func ParseConfigWithFlagSet(fs *flag.FlagSet, args []string) (*Config, error) {
 	fs.BoolVar(&cfg.ExitOnStop, "exit-on-stop", true, "Exit goreman if all subprocesses stop")
 	fs.BoolVar(&cfg.LogTime, "logtime", true, "show timestamp in log")
 	fs.Parse(args)
-	cfg.Args = fs.Args()
+	if len(fs.Args()) > 0 {
+		cfg.Args = fs.Args()
+	} else {
+		cfg.Args = args
+	}
 	return cfg, nil
 }
 

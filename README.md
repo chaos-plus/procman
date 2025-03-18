@@ -1,16 +1,12 @@
-# Goreman
-
-Clone of foreman written in golang.
-
-https://github.com/ddollar/foreman
+# procman
 
 ## Getting Started
 
-    go install github.com/mattn/goreman@latest
+    go install github.com/chaos-plus/procman@latest
 
 ## Usage
 
-    goreman start
+    procman start
 
 Will start all commands defined in the `Procfile` and display their outputs.
 Any signals are forwarded to each process.
@@ -32,6 +28,3 @@ The main goroutine loads `Procfile` and starts each command in the file. Afterwa
 
 ![design](images/design.png)
 
-## Authors
-
-Yasuhiro Matsumoto (a.k.a mattn)

@@ -239,9 +239,13 @@ func start(ctx context.Context, sig <-chan os.Signal, cfg *Config) error {
 	return procsErr
 }
 
-func ReadConfig(args []string) (*Config, error) {
-	cfg := &Config{}
+func ParseConfig(args []string) (*Config, error) {
 	fs := flag.NewFlagSet("goreman", flag.ExitOnError)
+	return ParseConfigWithFlagSet(fs, args)
+}
+
+func ParseConfigWithFlagSet(fs *flag.FlagSet, args []string) (*Config, error) {
+	cfg := &Config{}
 	fs.StringVar(&cfg.Procfile, "f", "Procfile", "proc file")
 	fs.UintVar(&cfg.RpcPort, "p", defaultPort(), "port")
 	fs.BoolVar(&cfg.StartRpcServer, "rpc-server", true, "Start an RPC server listening on "+defaultAddr())

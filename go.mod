@@ -1,4 +1,4 @@
-module github.com/mattn/goreman
+module github.com/chaos-plus/procman
 
 go 1.23
 

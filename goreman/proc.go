@@ -1,6 +1,7 @@
-package main
+package goreman
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -12,7 +13,7 @@ import (
 // spawnProc starts the specified proc, and returns any error from running it.
 func spawnProc(name string, errCh chan<- error) {
 	proc := findProc(name)
-	logger := createLogger(name, proc.colorIndex)
+	logger := createLogger(name, proc.colorIndex, proc.logTime)
 
 	cs := append(cmdStart, proc.cmdline)
 	cmd := exec.Command(cs[0], cs[1:]...)
@@ -136,7 +137,7 @@ func stopProcs(sig os.Signal) error {
 }
 
 // spawn all procs.
-func startProcs(sc <-chan os.Signal, rpcCh <-chan *rpcMessage, exitOnError bool) error {
+func startProcs(ctx context.Context, sc <-chan os.Signal, rpcCh <-chan *rpcMessage, cfg *Config) error {
 	var wg sync.WaitGroup
 	errCh := make(chan error, 1)
 
@@ -145,7 +146,7 @@ func startProcs(sc <-chan os.Signal, rpcCh <-chan *rpcMessage, exitOnError bool)
 	}
 
 	allProcsDone := make(chan struct{}, 1)
-	if *exitOnStop {
+	if cfg.ExitOnStop {
 		go func() {
 			wg.Wait()
 			allProcsDone <- struct{}{}
@@ -168,7 +169,7 @@ func startProcs(sc <-chan os.Signal, rpcCh <-chan *rpcMessage, exitOnError bool)
 				panic("unimplemented rpc message type " + rpcMsg.Msg)
 			}
 		case err := <-errCh:
-			if exitOnError {
+			if cfg.ExitOnError {
 				stopProcs(os.Interrupt)
 				return err
 			}

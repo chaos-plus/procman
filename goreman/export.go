@@ -1,4 +1,4 @@
-package main
+package goreman
 
 import (
 	"fmt"
@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-func exportUpstart(cfg *config, path string) error {
+func exportUpstart(cfg *Config, path string) error {
 	for i, proc := range procs {
 		f, err := os.Create(filepath.Join(path, "app-"+proc.name+".conf"))
 		if err != nil {
@@ -57,7 +57,7 @@ func exportUpstart(cfg *config, path string) error {
 }
 
 // command: export.
-func export(cfg *config, format, path string) error {
+func export(cfg *Config, format, path string) error {
 	err := readProcfile(cfg)
 	if err != nil {
 		return err

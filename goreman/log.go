@@ -1,4 +1,4 @@
-package main
+package goreman
 
 import (
 	"bytes"
@@ -17,6 +17,7 @@ type clogger struct {
 	done    chan struct{}
 	timeout time.Duration // how long to wait before printing partial lines
 	buffers buffers       // partial lines awaiting printing
+	logTime bool
 }
 
 var colors = []int{
@@ -63,7 +64,7 @@ func (v *buffers) WriteTo(w io.Writer) (n int64, err error) {
 func (l *clogger) writeBuffers(line []byte) {
 	mutex.Lock()
 	fmt.Fprintf(out, "\x1b[%dm", colors[l.idx])
-	if *logTime {
+	if l.logTime {
 		now := time.Now().Format("15:04:05")
 		fmt.Fprintf(out, "%s %*s | ", now, maxProcNameLength, l.name)
 	} else {
@@ -128,10 +129,10 @@ func (l *clogger) Write(p []byte) (int, error) {
 }
 
 // create logger instance.
-func createLogger(name string, colorIndex int) *clogger {
+func createLogger(name string, colorIndex int, logTime bool) *clogger {
 	mutex.Lock()
 	defer mutex.Unlock()
-	l := &clogger{idx: colorIndex, name: name, writes: make(chan []byte), done: make(chan struct{}), timeout: 2 * time.Millisecond}
+	l := &clogger{idx: colorIndex, name: name, writes: make(chan []byte), done: make(chan struct{}), timeout: 2 * time.Millisecond, logTime: logTime}
 	go l.writeLines()
 	return l
 }

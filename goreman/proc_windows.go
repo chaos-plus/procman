@@ -1,4 +1,4 @@
-package main
+package goreman
 
 import (
 	"os"
@@ -13,7 +13,7 @@ var procAttrs = &windows.SysProcAttr{
 	CreationFlags: windows.CREATE_UNICODE_ENVIRONMENT | windows.CREATE_NEW_PROCESS_GROUP,
 }
 
-func terminateProc(proc *procInfo, _ os.Signal) error {
+func terminateProc(proc *ProcInfo, _ os.Signal) error {
 	dll, err := windows.LoadDLL("kernel32.dll")
 	if err != nil {
 		return err

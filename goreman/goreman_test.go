@@ -1,4 +1,4 @@
-package main
+package goreman
 
 import (
 	"context"
@@ -57,7 +57,7 @@ func startGoreman(ctx context.Context, t *testing.T, ch <-chan os.Signal, file [
 	if _, err := f.Write(file); err != nil {
 		t.Fatal(err)
 	}
-	cfg := &config{
+	cfg := &Config{
 		ExitOnError: true,
 		Procfile:    f.Name(),
 	}

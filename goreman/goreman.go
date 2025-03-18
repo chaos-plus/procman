@@ -3,7 +3,6 @@ package goreman
 import (
 	"context"
 	"errors"
-	"flag"
 	"fmt"
 	"os"
 	"os/exec"
@@ -15,6 +14,7 @@ import (
 	"sync"
 
 	"github.com/joho/godotenv"
+	"github.com/spf13/pflag"
 )
 
 // version is the git tag at the time of build and is used to denote the
@@ -26,7 +26,7 @@ const (
 	revision = "HEAD"
 )
 
-func Usage() {
+func Usage(cfg *Config) {
 	fmt.Fprint(os.Stderr, `Tasks:
   goreman check                      # Show entries in Procfile
   goreman help [TASK]                # Show this help
@@ -45,7 +45,7 @@ func Usage() {
 
 Options:
 `)
-	flag.PrintDefaults()
+	cfg.FlagSet.PrintDefaults()
 	os.Exit(0)
 }
 
@@ -83,7 +83,8 @@ var maxProcNameLength = 0
 var re = regexp.MustCompile(`\$([a-zA-Z]+[a-zA-Z0-9_]+)`)
 
 type Config struct {
-	Args []string
+	FlagSet *pflag.FlagSet
+	Args    []string
 
 	Procfile       string `yaml:"procfile" mapstructure:"procfile" description:"proc file" default:"Procfile"`
 	StartRpcServer bool   `yaml:"rpc-server" mapstructure:"rpc-server" description:"start an RPC server" default:"true"`
@@ -244,27 +245,27 @@ func start(ctx context.Context, sig <-chan os.Signal, cfg *Config) error {
 }
 
 func ParseConfig(args []string) *Config {
-	fs := flag.NewFlagSet("goreman", flag.ExitOnError)
+	fs := pflag.NewFlagSet("goreman", pflag.ContinueOnError)
 	return ParseConfigWithFlagSet(fs, args)
 }
 
-func ParseConfigWithFlagSet(fs *flag.FlagSet, args []string) *Config {
-	cfg := &Config{}
-	fs.StringVar(&cfg.Procfile, "f", "Procfile", "proc file")
-	fs.UintVar(&cfg.RpcPort, "p", 8555, "rpc port")
-	fs.BoolVar(&cfg.StartRpcServer, "rpc-server", true, "Start an RPC server listening on "+defaultAddr())
-	fs.StringVar(&cfg.BaseDir, "basedir", "", "base directory")
-	fs.UintVar(&cfg.BasePort, "b", 5000, "base number of port")
-	fs.BoolVar(&cfg.SetPorts, "set-ports", true, "False to avoid setting PORT env var for each subprocess")
-	fs.BoolVar(&cfg.ExitOnError, "exit-on-error", false, "Exit goreman if a subprocess quits with a nonzero return code")
-	fs.BoolVar(&cfg.ExitOnStop, "exit-on-stop", true, "Exit goreman if all subprocesses stop")
-	fs.BoolVar(&cfg.LogTime, "logtime", true, "show timestamp in log")
+func ParseConfigWithFlagSet(fs *pflag.FlagSet, args []string) *Config {
+	cfg := &Config{FlagSet: fs}
+	fs.StringVarP(&cfg.Procfile, "procfile", "f", "Procfile", "proc file")
+	fs.UintVarP(&cfg.RpcPort, "rpc-port", "p", 8555, "rpc port")
+	fs.BoolVarP(&cfg.StartRpcServer, "rpc-server", "", true, "Start an RPC server")
+	fs.StringVarP(&cfg.BaseDir, "base-dir", "", "", "base directory")
+	fs.UintVarP(&cfg.BasePort, "base-port", "b", 5000, "base number of port")
+	fs.BoolVarP(&cfg.SetPorts, "set-ports", "", true, "False to avoid setting PORT env var for each subprocess")
+	fs.BoolVarP(&cfg.ExitOnError, "exit-on-error", "", false, "Exit goreman if a subprocess quits with a nonzero return code")
+	fs.BoolVarP(&cfg.ExitOnStop, "exit-on-stop", "", true, "Exit goreman if all subprocesses stop")
+	fs.BoolVarP(&cfg.LogTime, "logtime", "", true, "show timestamp in log")
+
 	fs.Parse(args)
-	if len(fs.Args()) > 0 {
-		cfg.Args = fs.Args()
-	} else {
-		cfg.Args = args
-	}
+
+	cfg.Args = fs.Args()
+
+	fmt.Printf("Parsed config: %+v\n", cfg)
 	return cfg
 }
 
@@ -280,8 +281,14 @@ func MainWithArgs(args []string) {
 func MainWithConfig(cfg *Config) {
 	var err error
 
-	if cfg == nil {
-		cfg = &Config{}
+	if cfg == nil && len(os.Args) > 1 {
+		cfg = ParseConfig(os.Args[1:])
+	} else if cfg == nil {
+		cfg = ParseConfig([]string{})
+	}
+	if cfg.FlagSet == nil {
+		cc := ParseConfig([]string{})
+		cfg.FlagSet = cc.FlagSet
 	}
 
 	if cfg.BaseDir != "" {
@@ -302,20 +309,20 @@ func MainWithConfig(cfg *Config) {
 	case "check":
 		err = check(cfg)
 	case "help":
-		Usage()
+		Usage(cfg)
 	case "run":
 		if len(cfg.Args) >= 2 {
 			cmd, args := cfg.Args[1], cfg.Args[2:]
 			err = run(cmd, args, cfg.RpcPort)
 		} else {
-			Usage()
+			Usage(cfg)
 		}
 	case "export":
 		if len(cfg.Args) == 3 {
 			format, path := cfg.Args[1], cfg.Args[2]
 			err = export(cfg, format, path)
 		} else {
-			Usage()
+			Usage(cfg)
 		}
 	case "start":
 		c := notifyCh()
@@ -323,7 +330,8 @@ func MainWithConfig(cfg *Config) {
 	case "version":
 		ShowVersion()
 	default:
-		Usage()
+		fmt.Fprintf(os.Stderr, "goreman: unknown command: %s\n", cmd)
+		Usage(cfg)
 	}
 
 	if err != nil {
